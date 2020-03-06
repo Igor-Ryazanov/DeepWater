@@ -8,17 +8,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Autoencoder(nn.Module):
-    def __init__(self):
+    def __init__(self, final_kernel = 7):
         super(Autoencoder, self).__init__()
         self.encoder = nn.Sequential(
             nn.Conv2d(4, 16, kernel_size = 3, stride=2, padding=1),
             nn.ReLU(),
             nn.Conv2d(16, 32, kernel_size = 3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size = 7)
+            nn.Conv2d(32, 64, kernel_size = final_kernel)
         )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size = 7),
+            nn.ConvTranspose2d(64, 32, kernel_size = final_kernel),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 16, kernel_size = 3, stride=2, padding=1, output_padding=1),
             nn.ReLU(),
@@ -58,21 +58,21 @@ def train_autoencoder(model, train_data, num_epochs=5, batch_size=5, learning_ra
     return outputs
 
 def test_reconstruction(model, test_frame):
-    test_reconst = model(torch.from_numpy(test_frame).to(device).view([1, 4, 28, 60]))
-    return test_reconst.cpu().detach().numpy().reshape(4,28,60)
+    test_reconst = model(torch.from_numpy(test_frame).to(device).view([1, test_frame.shape[0], test_frame.shape[1], test_frame.shape[2]]))
+    return test_reconst.cpu().detach().numpy().reshape(test_frame.shape)
 
 def compress_wakes(wakes, model):
     compressed_wakes = []
     for wake in wakes:
-        wake_image = torch.from_numpy(wake[:,:-1,:]).to(device).view([1, 4, 28, 60])
+        wake_image = torch.from_numpy(wake[:,:-1,:]).to(device).view([1] + list(wake[:,:-1,:].shape))
         compressed_wake = model.encoder(wake_image).cpu().detach().numpy()
         compressed_wakes.append(compressed_wake)
     return np.array(compressed_wakes)
 
-def decompress_wakes(seeds, model):
+def decompress_wakes(seeds, model, comperssed_shape = [1, 64, 1, 9], depth = 28, points = 60):
     decompressed_wakes = []
     for seed in seeds:
-        seed_tensor = torch.from_numpy(seed).to(device).view([1, 64, 1, 9])
-        decompressed_wake = model.decoder(seed_tensor).cpu().detach().numpy().reshape(4, 28, 60)
+        seed_tensor = torch.from_numpy(seed).to(device).view(comperssed_shape)
+        decompressed_wake = model.decoder(seed_tensor).cpu().detach().numpy().reshape(4, depth, points)
         decompressed_wakes.append(decompressed_wake)
     return np.array(decompressed_wakes)
