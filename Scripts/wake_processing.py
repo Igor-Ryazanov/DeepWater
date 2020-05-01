@@ -4,14 +4,15 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import math
 
-def make_heatmap(im, dt = None, cbar = False):
+def make_heatmap(im, dt = None, cbar = False, save = False, filename = None):
     sns.heatmap(im, cmap = 'coolwarm', cbar = cbar)
     if dt is None:
         new_title = 'No date'
     else:
         dt = stamp_to_date(int(dt[0]))
-        new_title = str(dt[1])+'-'+str(dt[0])+'-2018 '+ str(dt[2])+ ':'+ str(dt[3])
+        new_title = str(dt[1])+'-'+str(dt[0])+'-2018 '+ str(dt[2])+ ':'+ str(int(dt[3]))+':' + str(int(math.ceil((dt[3]-int(dt[3]))*60 )))
     plt.title(new_title)
     plt.yticks(np.arange(28, step = 4),np.arange(3, 30, step = 4))
     xinterval= np.timedelta64(30,'s')
@@ -19,6 +20,9 @@ def make_heatmap(im, dt = None, cbar = False):
     plt.xlabel("Time (minutes)")
     plt.ylabel("Depth")
     plt.ioff()
+    plt.tight_layout()
+    if save:
+        plt.savefig(filename)
     plt.show()
 
 def make_12_heatmaps(im, title = 'Wake Samples', cbar = False, save = False, filename = None):
@@ -133,10 +137,12 @@ def get_files():
             dn = np.ones(times.shape)
         day_night = np.append(day_night, dn)
     max_response = np.array([full_data_1, full_data_3, full_data_4, full_data_5]).max()
-    data_series_5 = np.append(np.flip(full_data_5, 1)/max_response, full_times.reshape(full_times.shape[0], 1), axis = 1)
-    data_series_4 = np.append(np.flip(full_data_4, 1)/max_response, full_times.reshape(full_times.shape[0], 1), axis = 1)
-    data_series_3 = np.append(np.flip(full_data_3, 1)/max_response, full_times.reshape(full_times.shape[0], 1), axis = 1)
-    data_series_1 = np.append(np.flip(full_data_1, 1)/max_response, full_times.reshape(full_times.shape[0], 1), axis = 1)
+    min_response = np.array([full_data_1, full_data_3, full_data_4, full_data_5]).min()
+    max_min = max_response - min_response
+    data_series_5 = np.append((np.flip(full_data_5, 1) - min_response)/max_min, full_times.reshape(full_times.shape[0], 1), axis = 1)
+    data_series_4 = np.append((np.flip(full_data_4, 1) - min_response)/max_min, full_times.reshape(full_times.shape[0], 1), axis = 1)
+    data_series_3 = np.append((np.flip(full_data_3, 1) - min_response)/max_min, full_times.reshape(full_times.shape[0], 1), axis = 1)
+    data_series_1 = np.append((np.flip(full_data_1, 1) - min_response)/max_min, full_times.reshape(full_times.shape[0], 1), axis = 1)
     data_series_5 = np.append(data_series_5, day_night.reshape(day_night.shape[0], 1), axis = 1).transpose()
     data_series_4 = np.append(data_series_4, day_night.reshape(day_night.shape[0], 1), axis = 1).transpose()
     data_series_3 = np.append(data_series_3, day_night.reshape(day_night.shape[0], 1), axis = 1).transpose()
